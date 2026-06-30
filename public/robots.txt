@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://carlagf19.github.io/Portafolio_DS/sitemap.xml
