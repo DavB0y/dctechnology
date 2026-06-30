@@ -436,6 +436,7 @@ const defaultReviews: Review[] = [
 const Testimonials: React.FC = () => {
   const [reviews, setReviews] = React.useState<Review[]>([]);
   const [startIndex, setStartIndex] = React.useState(0);
+  const [likedKeys, setLikedKeys] = React.useState<string[]>([]);
 
   // Estados para formulario de testimonio
   const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -469,6 +470,11 @@ const Testimonials: React.FC = () => {
     };
 
     fetchTestimonials();
+
+    if (typeof window !== "undefined") {
+      const keys = JSON.parse(localStorage.getItem("liked_keys") || "[]");
+      setLikedKeys(keys);
+    }
   }, []);
 
   const handleSubmitTestimonial = async (e: React.FormEvent) => {
@@ -546,9 +552,12 @@ const Testimonials: React.FC = () => {
   const handleLike = async (reviewId: number | undefined, reviewName: string) => {
     if (typeof window === "undefined") return;
 
-    const liked = JSON.parse(localStorage.getItem("liked") || "[]");
+    // Usar id cuando existe, si no usar nombre como clave única anti-spam
+    const likeKey = reviewId !== undefined ? `id_${reviewId}` : `name_${reviewName}`;
 
-    if (liked.includes(reviewName)) return;
+    if (likedKeys.includes(likeKey)) return;
+
+    const newLiked = [...likedKeys, likeKey];
 
     if (reviewId !== undefined) {
       try {
@@ -562,22 +571,25 @@ const Testimonials: React.FC = () => {
               : review
           );
           setReviews(updated);
-          localStorage.setItem("liked", JSON.stringify([...liked, reviewName]));
+          localStorage.setItem("liked_keys", JSON.stringify(newLiked));
+          setLikedKeys(newLiked);
         }
       } catch (err) {
         console.error("Error sending like:", err);
       }
     } else {
-      // Fallback local
+      // Fallback local (cuando no hay id — reviews del defaultReviews)
       const updated = reviews.map((review) =>
         review.name === reviewName
           ? { ...review, likes: review.likes + 1 }
           : review
       );
       setReviews(updated);
-      localStorage.setItem("liked", JSON.stringify([...liked, reviewName]));
+      localStorage.setItem("liked_keys", JSON.stringify(newLiked));
+      setLikedKeys(newLiked);
     }
   };
+
 
   return (
     <section id="testimonios" className="py-24 bg-dark-bg/50">
@@ -656,15 +668,22 @@ const Testimonials: React.FC = () => {
                     </p>
 
                     <div className="pt-6 border-t border-dark-border flex justify-between items-center relative z-10">
-                      <div
-                        className="flex items-center gap-2 text-dark-text hover:text-white cursor-pointer transition-colors"
-                        onClick={() => handleLike(rev.id, rev.name)}
-                      >
-                        <span className="material-symbols-outlined text-lg">
-                          thumb_up
-                        </span>
-                        <span className="text-xs font-bold">{rev.likes}</span>
-                      </div>
+                      {(() => {
+                        const isLiked = likedKeys.includes(rev.id !== undefined ? `id_${rev.id}` : `name_${rev.name}`);
+                        return (
+                          <div
+                            className={`flex items-center gap-2 cursor-pointer transition-colors ${
+                              isLiked ? "text-primary-500 hover:text-primary-600" : "text-dark-text hover:text-white"
+                            }`}
+                            onClick={() => handleLike(rev.id, rev.name)}
+                          >
+                            <span className={`material-symbols-outlined text-lg ${isLiked ? "filled-icon" : ""}`}>
+                              thumb_up
+                            </span>
+                            <span className="text-xs font-bold">{rev.likes}</span>
+                          </div>
+                        );
+                      })()}
 
                       <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
                         Verificado
