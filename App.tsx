@@ -10,7 +10,6 @@ import Certifications from './components/Certifications';
 import Testimonials from './components/Testimonials';
 import Contact from './components/Contact';
 import Footer from './components/Footer';
-import Chatbot from './components/Chatbot';
 import AdminDashboard from './components/AdminDashboard';
 
 const App: React.FC = () => {
@@ -30,7 +29,6 @@ const App: React.FC = () => {
         <Contact />
       </main>
       <Footer onAdminClick={() => setIsAdminOpen(true)} />
-      <Chatbot />
       
       {isAdminOpen && (
         <AdminDashboard onClose={() => setIsAdminOpen(false)} />

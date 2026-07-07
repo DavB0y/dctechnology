@@ -6,15 +6,10 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { GoogleGenAI } from '@google/genai';
 import pg from 'pg';
 
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET || 'DContreras123!';
-
-// ─── Google GenAI ─────────────────────────────────────────────────────────────
-const geminiApiKey = process.env.GEMINI_API_KEY;
-const aiClient = geminiApiKey ? new GoogleGenAI({ apiKey: geminiApiKey }) : null;
 
 app.use(cors());
 app.use(express.json());
@@ -408,64 +403,6 @@ app.put('/api/settings/:key', authMiddleware, async (req: AuthRequest, res: Resp
     await db.run('UPDATE settings SET value = ? WHERE key = ?', [value, key]);
     res.json({ message: `Configuración ${key} actualizada.`, key, value });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
-// Chatbot IA
-app.post('/api/chat', async (req: Request, res: Response) => {
-  const { message, history } = req.body;
-  if (!message) { res.status(400).json({ error: 'El mensaje es requerido.' }); return; }
-  if (!aiClient) {
-    res.status(500).json({ error: 'El servicio de IA no está configurado. Falta GEMINI_API_KEY.' });
-    return;
-  }
-  try {
-    const systemInstruction =
-      "Eres el asistente virtual inteligente de Davide Contreras, especialista en Soporte Técnico de computadoras y redes con certificación Cisco. " +
-      "Tu objetivo es ayudar a los usuarios que visitan su portafolio web a diagnosticar de forma preliminar problemas técnicos cotidianos. " +
-      "Responde en español de forma atenta, amable y profesional. " +
-      "Puedes orientar sobre temas de: " +
-      "- Computadoras lentas, limpieza física por polvo y mantenimiento térmico con pasta térmica. " +
-      "- Respaldos y copias de seguridad de datos en la nube y discos duros. " +
-      "- Problemas de red, Wi-Fi inestable y routers Cisco o genéricos. " +
-      "- Selección de componentes de hardware como CPU, RAM y discos SSD, además de asesoramiento de compra. " +
-      "- Instalación de sistemas operativos y programas comunes. " +
-      "IMPORTANTE: Si el problema es de alta complejidad, como micro-soldadura, reparación física de placa, fallas graves de hardware o requiere soporte presencial urgente, debes recomendar contactar directamente a Davide. " +
-      "También debes facilitar sus datos si el usuario pide contactarse, solicita precios, número, WhatsApp, correo o atención directa. " +
-      "En esos casos responde de forma breve, amable y profesional con este mensaje: " +
-      "Claro, puedes comunicarte directamente con Davide a través de los siguientes medios: " +
-      "WhatsApp/Teléfono: +51926533855. " +
-      "Correo electrónico: davidecontrerashuerta10@gmail.com. " +
-      "También puedes revisar la sección de Contacto del sitio web para más información. " +
-      "Si tienes alguna consulta previa, también puedo orientarte por aquí.";
-
-    const formattedContents: any[] = [];
-    if (history && Array.isArray(history)) {
-      history.forEach((h: any) => {
-        formattedContents.push({ role: h.role === 'model' ? 'model' : 'user', parts: [{ text: h.text }] });
-      });
-    }
-    formattedContents.push({ role: 'user', parts: [{ text: message }] });
-
-    let response;
-    try {
-      response = await aiClient.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: formattedContents,
-        config: { systemInstruction }
-      });
-    } catch {
-      response = await aiClient.models.generateContent({
-        model: 'gemini-1.5-flash',
-        contents: formattedContents,
-        config: { systemInstruction }
-      });
-    }
-
-    res.json({ text: response.text || 'Lo siento, no pude procesar tu mensaje.' });
-  } catch (e: any) {
-    console.error('Error Gemini:', e);
-    res.status(500).json({ error: 'Error al comunicarse con el asistente de IA: ' + e.message });
-  }
 });
 
 export default app;
